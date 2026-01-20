@@ -142,15 +142,54 @@
             pmRadio.checked = (ampm === 'PM');
         }
 
-        document.getElementById('coffee-time').addEventListener('input', updateProgrammedTime);
-        document.getElementById('machine-time').addEventListener('input', function() {
+        // Sauvegarde l'offset dans le localStorage
+        function saveMachineOffset() {
+            const now = new Date();
+            const realMinutes = now.getHours() * 60 + now.getMinutes();
+            const machineTime = document.getElementById('machine-time').value;
+            const ampm = document.querySelector('input[name="machine-ampm"]:checked')?.value || 'AM';
+            const machineMinutes = getMinutesFrom12h(machineTime, ampm);
+            if (machineMinutes !== null) {
+                const offset = machineMinutes - realMinutes;
+                localStorage.setItem('machineOffset', offset);
+            }
+        }
+
+        // Applique l'offset stocké pour positionner l'heure machine
+        function applyStoredMachineOffset() {
+            const offset = parseInt(localStorage.getItem('machineOffset'), 10);
+            if (!isNaN(offset)) {
+                const now = new Date();
+                let machineMinutes = (now.getHours() * 60 + now.getMinutes() + offset + 24*60) % (24*60);
+                // Conversion en 12h + AM/PM
+                const { hour, minute, ampm } = minutesTo12hString(machineMinutes);
+                document.getElementById('machine-time').value = hour + ':' + minute;
+                document.getElementById('machine-am').checked = (ampm === 'AM');
+                document.getElementById('machine-pm').checked = (ampm === 'PM');
+            }
+        }
+
+        // Ajout de la sauvegarde de l'offset à chaque changement de l'heure machine
+        function onMachineTimeChange() {
             syncMachineTimeTo12h();
+            saveMachineOffset();
+            updateProgrammedTime();
+        }
+
+        document.getElementById('coffee-time').addEventListener('input', updateProgrammedTime);
+        document.getElementById('machine-time').removeEventListener('input', syncMachineTimeTo12h); // Nettoyage si déjà présent
+        document.getElementById('machine-time').addEventListener('input', onMachineTimeChange);
+        document.getElementById('machine-am').addEventListener('change', function() {
+            saveMachineOffset();
             updateProgrammedTime();
         });
-        document.getElementById('machine-am').addEventListener('change', updateProgrammedTime);
-        document.getElementById('machine-pm').addEventListener('change', updateProgrammedTime);
+        document.getElementById('machine-pm').addEventListener('change', function() {
+            saveMachineOffset();
+            updateProgrammedTime();
+        });
 
         // Initialisation au chargement
+        applyStoredMachineOffset();
         syncMachineTimeTo12h();
         updateProgrammedTime();
     </script>
