@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>L'heure du café</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1><label for="machine-time">Heure sur la machine :</label></h1>
+    <div class="time-row">
+        <input type="time" id="machine-time" step="60">
+        <div class="ampm-selector">
+            <input type="radio" id="machine-am" name="machine-ampm" value="AM" class="ampm-radio">
+            <label for="machine-am" class="ampm-label">AM</label><br>
+            <input type="radio" id="machine-pm" name="machine-ampm" value="PM" class="ampm-radio">
+            <label for="machine-pm" class="ampm-label">PM</label>
+        </div>
+    </div>
+
+    <h1><label for="coffee-time">À quelle heure veux-tu ton café&nbsp;?</label></h1>
+    <input type="time" id="coffee-time" step="60">
+
+    <h1><label for="programmed-time">Programme la machine pour :</label></h1>
+    <div class="time-row">
+        <input type="time" id="programmed-time" step="60" readonly>
+        <div class="ampm-selector">
+            <input type="radio" id="programmed-am" name="programmed-ampm" value="AM" class="ampm-radio" disabled>
+            <label for="programmed-am" class="ampm-label">AM</label><br>
+            <input type="radio" id="programmed-pm" name="programmed-ampm" value="PM" class="ampm-radio" disabled>
+            <label for="programmed-pm" class="ampm-label">PM</label>
+        </div>
+    </div>
+
+    <script>
+        // Conversion 24h -> 12h + AM/PM
+        function convert24hTo12h(time24) {
+            if (!time24) return { hour: '', minute: '', ampm: 'AM' };
+            const [hourStr, minute] = time24.split(":");
+            let hour = parseInt(hourStr, 10);
+            let ampm = 'AM';
+            if (hour === 0) {
+                hour = 12;
+            } else if (hour === 12) {
+                ampm = 'PM';
+            } else if (hour > 12) {
+                hour -= 12;
+                ampm = 'PM';
+            }
+            return {
+                hour: hour.toString().padStart(2, '0'),
+                minute,
+                ampm
+            };
+        }
+
+        // Conversion 12h + AM/PM -> minutes depuis minuit
+        function getMinutesFrom12h(time12, ampm) {
+            if (!time12) return null;
+            let [hour, minute] = time12.split(":").map(Number);
+            if (ampm === 'PM' && hour !== 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+            return hour * 60 + minute;
+        }
+
+        // Conversion minutes depuis minuit -> 12h + AM/PM
+        function minutesTo12hString(minutes) {
+            let hour24 = Math.floor(minutes / 60) % 24;
+            let minute = minutes % 60;
+            let ampm = hour24 >= 12 ? 'PM' : 'AM';
+            let hour12 = hour24 % 12;
+            if (hour12 === 0) hour12 = 12;
+            return {
+                hour: hour12.toString().padStart(2, '0'),
+                minute: minute.toString().padStart(2, '0'),
+                ampm
+            };
+        }
+
+        // Calcule le décalage machine - réel (en minutes)
+        function getMachineOffsetMinutes() {
+            const now = new Date();
+            const realMinutes = now.getHours() * 60 + now.getMinutes();
+            const machineTime = document.getElementById('machine-time').value;
+            const ampm = document.querySelector('input[name="machine-ampm"]:checked')?.value || 'AM';
+            const machineMinutes = getMinutesFrom12h(machineTime, ampm);
+            if (machineMinutes === null) return 0;
+            // Décalage = machine - réel
+            return machineMinutes - realMinutes;
+        }
+
+        // Met à jour la section "Programme la machine pour"
+        function updateProgrammedTime() {
+            const coffeeTime = document.getElementById('coffee-time').value;
+            if (!coffeeTime) {
+                document.getElementById('programmed-time').value = '';
+                document.getElementById('programmed-am').checked = false;
+                document.getElementById('programmed-pm').checked = false;
+                return;
+            }
+            // 1. Heure café en minutes (24h)
+            const [coffeeHour, coffeeMinute] = coffeeTime.split(":").map(Number);
+            const coffeeTotalMinutes = coffeeHour * 60 + coffeeMinute;
+            // 2. Décalage machine
+            const offset = getMachineOffsetMinutes();
+            // 3. Heure de programmation (dans le référentiel machine)
+            let programmedMinutes = (coffeeTotalMinutes + offset + 24*60) % (24*60);
+            // 4. Affichage dans la section programmée (format 12h + AM/PM)
+            const { hour, minute, ampm } = minutesTo12hString(programmedMinutes);
+            document.getElementById('programmed-time').value = hour + ':' + minute;
+            document.getElementById('programmed-am').checked = (ampm === 'AM');
+            document.getElementById('programmed-pm').checked = (ampm === 'PM');
+        }
+
+        function syncMachineTimeTo12h() {
+            const machineTimeInput = document.getElementById('machine-time');
+            let value = machineTimeInput.value;
+            if (!value) return;
+            let [hour, minute] = value.split(":").map(Number);
+            // On préserve l'état AM/PM si l'heure est déjà au bon format
+            let amRadio = document.getElementById('machine-am');
+            let pmRadio = document.getElementById('machine-pm');
+            let ampm = amRadio.checked ? 'AM' : (pmRadio.checked ? 'PM' : 'AM');
+            // Si l'heure est > 12, on force PM
+            if (hour > 12) {
+                hour = hour - 12;
+                ampm = 'PM';
+            }
+            // Si l'heure est 0, on force AM et 12
+            if (hour === 0) {
+                hour = 12;
+                ampm = 'AM';
+            }
+            // Si l'heure est 12, on ne change pas AM/PM
+            // On reformate l'input si besoin
+            const formatted = hour.toString().padStart(2, '0') + ':' + minute.toString().padStart(2, '0');
+            if (machineTimeInput.value !== formatted) {
+                machineTimeInput.value = formatted;
+            }
+            // On met à jour les radios uniquement si on a changé AM/PM
+            amRadio.checked = (ampm === 'AM');
+            pmRadio.checked = (ampm === 'PM');
+        }
+
+        document.getElementById('coffee-time').addEventListener('input', updateProgrammedTime);
+        document.getElementById('machine-time').addEventListener('input', function() {
+            syncMachineTimeTo12h();
+            updateProgrammedTime();
+        });
+        document.getElementById('machine-am').addEventListener('change', updateProgrammedTime);
+        document.getElementById('machine-pm').addEventListener('change', updateProgrammedTime);
+
+        // Initialisation au chargement
+        syncMachineTimeTo12h();
+        updateProgrammedTime();
+    </script>
+</body>
+</html>

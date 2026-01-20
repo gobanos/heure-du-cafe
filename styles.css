@@ -1,0 +1,88 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f7f7;
+    color: #222;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+label {
+    font-size: 1em;
+    margin-bottom: 0.5em;
+    display: block;
+    text-align: center;
+}
+
+input[type="time"] {
+    font-size: 1.4em;
+    height: 2.6em;
+    width: 6em;
+    padding: 0.2em 0.5em;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background: #fff;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.time-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
+.ampm-selector {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    margin-bottom: 0;
+    height: 2.6em;
+    width: min-content;
+    overflow: hidden;
+}
+
+.ampm-radio {
+    display: none;
+}
+
+.ampm-label {
+    font-size: 1.4em;
+    height: 1.3em;
+    line-height: 1.3em;
+    padding: 0.2em 0.5em;
+    margin: 0.1em 0;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #bbb;
+    background: transparent;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ampm-radio:checked + .ampm-label {
+    color: #222;
+    background: transparent;
+    font-weight: bold;
+}
+
+input[readonly] {
+    color: initial;
+}
+}
